@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Super Soraya 17</title>
+    <!-- Tone.js apenas para os efeitos sonoros de pulo/vitória -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d0d1a;
+            --screen: #6ea9ff;
+            --console: #b1b1b1;
+            --console-dark: #7c7c7c;
+            --accent: #ffdd57;
+            --text: #ffffff;
+            --alert: #ff4f64;
+        }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            height: 100vh;
+            width: 100vw;
+            background: radial-gradient(circle at top, #1a1a3d 0%, #050509 60%, #010102 100%);
+            font-family: 'Press Start 2P', cursive;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #console-container {
+            width: 100%;
+            max-width: 640px;
+            height: 100%;
+            max-height: 960px;
+            background: var(--console);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: inset -8px -8px 20px rgba(0,0,0,0.4), 8px 8px 25px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        #music-toggle {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #333;
+            filter: drop-shadow(1px 1px 0 #fff);
+            z-index: 100;
+        }
+        #game-screen {
+            flex: 1;
+            background: var(--screen);
+            border: 18px solid var(--console-dark);
+            border-radius: 10px 10px 40px 10px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #game-screen::before, #game-screen::after {
+            content: "";
+            position: absolute;
+            pointer-events: none;
+        }
+        #game-screen::before {
+            width: 140%;
+            height: 140%;
+            background-image:
+                linear-gradient(90deg, rgba(255,255,255,0.07) 2px, transparent 2px),
+                linear-gradient(rgba(255,255,255,0.07) 2px, transparent 2px);
+            background-size: 20px 20px;
+            opacity: 0.25;
+            transform: rotate(5deg);
+        }
+        #game-screen::after {
+            width: 120%;
+            height: 40%;
+            bottom: -5%;
+            left: -10%;
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(255,255,255,0.15) 0,
+                rgba(255,255,255,0.15) 8px,
+                transparent 8px,
+                transparent 16px
+            );
+            opacity: 0.5;
+        }
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 25px 18px 50px;
+            background: linear-gradient(#6ea9ff 0%, #4f79d9 100%);
+        }
+        .slide.active {
+            display: flex;
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .text-block {
+            margin-top: 20px;
+            line-height: 1.6;
+            z-index: 2;
+        }
+        .lang-de {
+            display: block;
+            font-size: 13px;
+            color: #fffce6;
+            text-shadow: 2px 2px 0 #000;
+        }
+        .lang-pt {
+            display: block;
+            font-size: 8px;
+            margin-top: 8px;
+            color: rgba(255,255,255,0.7);
+        }
+        #start-btn {
+            background: var(--accent);
+            color: #101010;
+            padding: 18px 20px;
+            border: 4px solid #fff;
+            box-shadow: 0 4px #d4a51a;
+            cursor: pointer;
+            margin-top: 40px;
+            animation: pulse 1.2s infinite;
+            font-family: inherit;
+        }
+        @keyframes pulse {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        .nav-arrow {
+            position: absolute;
+            bottom: 18px;
+            font-size: 24px;
+            padding: 10px 18px;
+            background: rgba(0,0,0,0.6);
+            border: 3px solid #fff;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.6);
+            z-index: 50;
+        }
+        .nav-left { left: 18px; }
+        .nav-right { right: 18px; }
+        .nav-arrow.ready {
+            display: flex !important;
+            animation: arrowGlow 1s infinite;
+        }
+        @keyframes arrowGlow {
+            0%,100% { box-shadow: 0 0 6px rgba(255,255,255,0.5); }
+            50% { box-shadow: 0 0 15px rgba(255,255,255,1); }
+        }
+        .pixel-sad-face {
+            width: 10px;
+            height: 10px;
+            transform: scale(9);
+            margin-bottom: 30px;
+            box-shadow:
+                10px 0 0 #000, 70px 0 0 #000,
+                10px 10px 0 #000, 70px 10px 0 #000,
+                20px 60px 0 #000, 30px 70px 0 #000, 40px 80px 0 #000, 50px 80px 0 #000, 60px 70px 0 #000;
+        }
+        canvas {
+            image-rendering: pixelated;
+            background: #6ea9ff;
+            border: 4px solid #273c75;
+            border-radius: 6px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 8px;
+            background: rgba(0,0,0,0.6);
+            border: 3px solid #fff;
+            font-size: 9px;
+            margin-top: 10px;
+        }
+        #controls-area {
+            height: 190px;
+            margin-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 35px;
+        }
+        .d-pad {
+            width: 150px;
+            height: 150px;
+            position: relative;
+        }
+        .d-btn {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: #333;
+            border: 4px solid #000;
+            border-radius: 8px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .d-up { top: 0; left: 50px; }
+        .d-down { bottom: 0; left: 50px; }
+        .d-left { top: 50px; left: 0; }
+        .d-right { top: 50px; right: 0; }
+        .d-center {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: #222;
+            border: 4px solid #000;
+            border-radius: 10px;
+            top: 50px;
+            left: 50px;
+        }
+        .action-btns {
+            display: flex;
+            gap: 25px;
+        }
+        .ab-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #b71c1c;
+            border: 5px solid #5a0606;
+            color: #fff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -4px 4px 0 rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+        .ab-btn#btn-a { background: #2e7d32; border-color: #0c3b10; }
+        .ab-btn:active { transform: scale(0.94); }
+        #msg-lvlup, #villain-msg {
+            position: absolute;
+            bottom: 70px;
+            padding: 12px;
+            background: rgba(0,0,0,0.75);
+            border: 3px solid #fff;
+            font-size: 10px;
+            display: none;
+            width: 80%;
+            left: 10%;
+            z-index: 20;
+        }
+        #upgrade-burst {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 4px dashed #fff;
+            animation: spin 1.5s linear infinite;
+            display: none;
+            z-index: 15;
+        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        #gift-container {
+            font-size: 120px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .shaking { animation: shake 0.4s infinite; }
+        @keyframes shake {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-3px, 0); }
+            50% { transform: translate(3px, 0); }
+            75% { transform: translate(0, -3px); }
+            100% { transform: translate(0,0); }
+        }
+        #balloon-sky {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .balloon {
+            position: absolute;
+            bottom: -10%;
+            width: 30px;
+            height: 45px;
+            border-radius: 15px 15px 15px 15px/20px 20px 25px 25px;
+            animation: floatUp 6s linear infinite;
+            z-index: 5;
+        }
+        .balloon::after {
+            content: "";
+            position: absolute;
+            width: 2px;
+            height: 30px;
+            background: #fff;
+            top: 45px;
+            left: 14px;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-120vh) scale(1.2); opacity: 0.3; }
+        }
+        .firework {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #fff 0%, rgba(255,255,255,0) 60%);
+            animation: explode 1.8s ease-out infinite;
+        }
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(6); opacity: 0; }
+        }
+        .credits-box {
+            border: 2px dashed rgba(255,255,255,0.5);
+            padding: 14px;
+            width: 80%;
+            margin-top: 10px;
+            font-size: 10px;
+            color: #fff;
+        }
+        #photo-slot {
+            border: 2px dashed #fff;
+            width: 90%;
+            height: 80px;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: rgba(255,255,255,0.7);
+        }
+        @media (max-width: 520px) {
+            #controls-area { flex-direction: column; height: auto; margin-top: 10px; }
+            .action-btns { transform: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 
+    ================================================================
+    IMPORTANTE: MÚSICA DE FUNDO
+    Copie o arquivo mp3 para a mesma pasta e coloque o nome abaixo 
+    em src="...". 
+    Exemplo: src="super_mario_world_ending.mp3"
+    ================================================================
+-->
+<audio id="bg-music" loop src="«Super Mario World» - Ending Credit (Nintendo,1990,SNES).mp3"></audio>
+
+
+<div id="console-container">
+    <div id="music-toggle" title="Musik an/aus">🎵</div>
+    <div id="game-screen">
+        <div class="nav-arrow nav-left" id="btn-prev"><span>◄</span><small>BACK</small></div>
+        <div class="nav-arrow nav-right" id="btn-next"><span>►</span><small>NEXT</small></div>
+
+        <div class="slide active" id="slide-0">
+            <div class="text-block">
+                <span class="lang-de" style="font-size:20px;">SUPER SORAYA 17</span>
+                <span class="lang-pt">Super Soraya 17</span>
+            </div>
+            <button id="start-btn">
+                <span class="lang-de">ÜBERRASCHUNG STARTEN</span>
+                <span class="lang-pt">Clique para começar</span>
+            </button>
+            <div class="text-block" style="margin-top:30px;">
+                <span class="lang-de">Drücke die blinkende ► Taste, um voranzukommen.</span>
+                <span class="lang-pt">Aperte a seta ► quando ela piscar.</span>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-1">
+            <div class="pixel-sad-face"></div>
+            <div class="text-block">
+                <span class="lang-de">Ich wollte dein Foto haben, um dieses Geschenk zu bauen… aber du hast mir nicht vertraut.</span>
+                <span class="lang-pt">Eu queria sua foto para construir esse presente, mas você não confiou em mim.</span>
+            </div>
+            <div class="text-block">
+                <span class="lang-de">Halte Ausschau nach der ►-Taste!</span>
+                <span class="lang-pt">Fique de olho na seta ►!</span>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-2">
+            <div class="text-block">
+                <span class="lang-de">Führe Soraya von Level 16 zu Level 17.</span>
+                <span class="lang-pt">Guie Soraya do nível 16 ao 17.</span>
+            </div>
+            <canvas id="canvas-game-1" width="320" height="210"></canvas>
+            <div id="upgrade-burst"></div>
+            <div id="msg-lvlup">
+                <span class="lang-de">Der Tag ist unglaublich erwacht! Level 17 erreicht!</span>
+                <span class="lang-pt">O dia amanheceu incrível! Nível 17!</span>
+            </div>
+            <div class="badge">
+                <span class="lang-de">Nutze Pfeile oder das Joypad.</span>
+                <span class="lang-pt">Use as setas ou o joy.</span>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-3">
+            <div class="text-block">
+                <span class="lang-de">Der letzte Moment ist da – besiege den Bösewicht und erreiche das Geschenk.</span>
+                <span class="lang-pt">Chegou o momento final – derrote o vilão e chegue ao presente.</span>
+            </div>
+            <canvas id="canvas-game-2" width="320" height="210"></canvas>
+            <div id="villain-msg">
+                <span class="lang-de">Drücke die B-Taste, wenn du nahe bist!</span>
+                <span class="lang-pt">Aperte B quando estiver perto!</span>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-4">
+            <div class="text-block">
+                <span class="lang-de">Das Geschenk wartet… klopfe an!</span>
+                <span class="lang-pt">O presente espera… bata!</span>
+            </div>
+            <div id="gift-container">🎁</div>
+            <div class="text-block" id="click-counter">
+                <span class="lang-de">Tippe mehrmals, bis es aufspringt.</span>
+                <span class="lang-pt">Clique várias vezes até abrir.</span>
+            </div>
+            <div class="text-block" style="max-width:260px;">
+                <span class="lang-de">Du bist etwas Besonderes für mich, Soraya. Ich liebe dich.</span>
+                <span class="lang-pt">Você é especial para mim, Soraya. Te amo.</span>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-5">
+            <div id="balloon-sky"></div>
+            <div class="text-block">
+                <span class="lang-de" style="font-size:18px;">Herzlichen Glückwunsch, Soraya Ricarda!</span>
+                <span class="lang-pt">Parabéns, Soraya Ricarda!</span>
+            </div>
+            <div class="text-block">
+                <span class="lang-de">Feuerwerk, Konfetti, Freude – Level 17 unlocked!</span>
+                <span class="lang-pt">Fogos, confete e alegria – nível 17 desbloqueado!</span>
+            </div>
+            <div class="text-block">
+                <span class="lang-de">Credits:</span>
+                <span class="lang-pt">Créditos:</span>
+            </div>
+            <div class="credits-box">
+                <div>
+                    <div>Criação: André</div>
+                    <div>Design: André</div>
+                    <div>Pixel Magia: André</div>
+                </div>
+            </div>
+            <div id="photo-slot">HAPPY BIRDAY</div>
+        </div>
+    </div>
+
+    <div id="controls-area">
+        <div class="d-pad">
+            <div class="d-btn d-up" data-key="ArrowUp"><span>↑</span></div>
+            <div class="d-btn d-down" data-key="ArrowDown"><span>↓</span></div>
+            <div class="d-btn d-left" data-key="ArrowLeft"><span>←</span></div>
+            <div class="d-btn d-right" data-key="ArrowRight"><span>→</span></div>
+            <div class="d-center"></div>
+        </div>
+        <div class="action-btns">
+            <div class="ab-btn" id="btn-b">B</div>
+            <div class="ab-btn" id="btn-a">A</div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ====== GLOBAL STATE ====== */
+const slides = document.querySelectorAll('.slide');
+const totalSlides = slides.length;
+let currentSlide = 0;
+const slideProgress = new Array(totalSlides).fill(false);
+const prevBtn = document.getElementById('btn-prev');
+const nextBtn = document.getElementById('btn-next');
+slideProgress[0] = true;
+
+let audioStarted = false;
+let synth; // Tone.js for SFX
+const musicPlayer = document.getElementById('bg-music');
+const musicToggle = document.getElementById('music-toggle');
+
+/* ====== AUDIO SYSTEM (HYBRID: TONE.JS + HTML5 AUDIO) ====== */
+async function initAudio() {
+    if (audioStarted) return;
+    
+    // 1. Iniciar Tone.js para efeitos sonoros (Pulo, Hit)
+    await Tone.start();
+    synth = new Tone.PolySynth(Tone.Synth).toDestination();
+    synth.volume.value = -10;
+
+    // 2. Tocar o MP3 de fundo
+    try {
+        musicPlayer.volume = 0.5; // 50% volume
+        await musicPlayer.play();
+        musicToggle.textContent = "🔊";
+    } catch (e) {
+        console.log("Autoplay bloqueado pelo navegador, clique no ícone de som se necessário.");
+    }
+
+    audioStarted = true;
+}
+
+// Botão de Mute/Unmute agora controla o MP3
+musicToggle.addEventListener('click', () => {
+    if (!audioStarted) {
+        initAudio();
+    } else {
+        if (musicPlayer.paused) {
+            musicPlayer.play();
+            musicToggle.textContent = "🔊";
+        } else {
+            musicPlayer.pause();
+            musicToggle.textContent = "🔇";
+        }
+    }
+});
+
+// Efeitos Sonoros (Mantidos com Tone.js para resposta rápida)
+function playSound(type) {
+    if (!synth) return;
+    const now = Tone.now();
+    
+    if (type === 'jump') synth.triggerAttackRelease("C5", "16n", now);
+    if (type === 'hit') synth.triggerAttackRelease("A3", "16n", now);
+    if (type === 'win') {
+        synth.triggerAttackRelease(["C5","E5","G5"], "4n", now);
+    }
+    if (type === 'upgrade') {
+        synth.triggerAttackRelease("C4", "16n", now);
+        synth.triggerAttackRelease("E4", "16n", now + 0.1);
+        synth.triggerAttackRelease("G4", "16n", now + 0.2);
+        synth.triggerAttackRelease("C5", "8n", now + 0.35);
+    }
+}
+
+/* ====== NAVIGATION ====== */
+function updateNavButtons() {
+    prevBtn.style.display = currentSlide > 1 ? 'flex' : 'none';
+    if (currentSlide === totalSlides - 1) {
+        nextBtn.style.display = 'none';
+        nextBtn.classList.remove('ready');
+    } else if (slideProgress[currentSlide]) {
+        nextBtn.style.display = 'flex';
+        nextBtn.classList.add('ready');
+    } else {
+        nextBtn.style.display = 'none';
+        nextBtn.classList.remove('ready');
+    }
+}
+function markSlideComplete(idx) {
+    if (!slideProgress[idx]) {
+        slideProgress[idx] = true;
+        if (idx === currentSlide) updateNavButtons();
+    }
+}
+function showSlide(index) {
+    currentSlide = index;
+    slides.forEach((slide, idx) => slide.classList.toggle('active', idx === index));
+    if (index === 1 && !slideProgress[1]) {
+        setTimeout(() => markSlideComplete(1), 2500);
+    }
+    if (index === 2) {
+        resetGame1();
+        loopGame1();
+    }
+    if (index === 3) {
+        resetGame2();
+        loopGame2();
+    }
+    if (index === 4) {
+        resetGift();
+    }
+    if (index === 5) {
+        startCelebration();
+    }
+    updateNavButtons();
+}
+nextBtn.addEventListener('click', () => {
+    if (currentSlide < totalSlides - 1 && slideProgress[currentSlide]) {
+        showSlide(currentSlide + 1);
+    }
+});
+prevBtn.addEventListener('click', () => {
+    if (currentSlide > 1) showSlide(currentSlide - 1);
+});
+
+/* ====== START BUTTON ====== */
+document.getElementById('start-btn').addEventListener('click', () => {
+    initAudio(); // Tenta iniciar o áudio no clique
+    showSlide(1);
+});
+
+/* ====== INPUT HANDLING ====== */
+const keys = {
+    ArrowUp: false,
+    ArrowDown: false,
+    ArrowLeft: false,
+    ArrowRight: false
+};
+window.addEventListener('keydown', (e) => {
+    if (e.code in keys) keys[e.code] = true;
+    if (e.code === 'KeyX') triggerAttack();
+});
+window.addEventListener('keyup', (e) => {
+    if (e.code in keys) keys[e.code] = false;
+});
+document.querySelectorAll('.d-btn').forEach(btn => {
+    const key = btn.dataset.key;
+    btn.addEventListener('mousedown', () => { keys[key] = true; });
+    btn.addEventListener('mouseup', () => { keys[key] = false; });
+    btn.addEventListener('mouseleave', () => { keys[key] = false; });
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; });
+});
+const btnA = document.getElementById('btn-a');
+const btnB = document.getElementById('btn-b');
+btnA.addEventListener('mousedown', () => { keys.ArrowUp = true; });
+btnA.addEventListener('mouseup', () => { keys.ArrowUp = false; });
+btnA.addEventListener('touchstart', (e) => { e.preventDefault(); keys.ArrowUp = true; });
+btnA.addEventListener('touchend', (e) => { e.preventDefault(); keys.ArrowUp = false; });
+btnB.addEventListener('mousedown', triggerAttack);
+btnB.addEventListener('touchstart', (e) => { e.preventDefault(); triggerAttack(); });
+
+/* ====== GAME 1: LEVEL UPGRADE ====== */
+const canvas1 = document.getElementById('canvas-game-1');
+const ctx1 = canvas1.getContext('2d');
+let soraya1 = { x: 20, y: 140, vy: 0, grounded: true };
+let game1Solved = false;
+
+function resetGame1() {
+    soraya1 = { x: 20, y: 140, vy: 0, grounded: true };
+    game1Solved = false;
+    document.getElementById('msg-lvlup').style.display = 'none';
+    document.getElementById('upgrade-burst').style.display = 'none';
+}
+function drawSoraya(ctx, x, y, withSword=false) {
+    const p = 4;
+    // Cabelo
+    ctx.fillStyle = '#ffcf9f';
+    ctx.fillRect(x, y, 4*p, 4*p);
+    ctx.fillStyle = '#ffe066';
+    ctx.fillRect(x-1*p, y, 6*p, 2*p);
+    ctx.fillRect(x-1*p, y, 1*p, 5*p);
+    ctx.fillRect(x+4*p, y, 1*p, 5*p);
+    // Vestido
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(x+1*p, y+2*p, 3*p, 1*p);
+    // Óculos
+    ctx.fillStyle = '#62b4ff';
+    ctx.fillRect(x+1*p, y+2*p, 1*p, 1*p);
+    ctx.fillRect(x+3*p, y+2*p, 1*p, 1*p);
+    // Corpo
+    ctx.fillStyle = '#ff4fa2';
+    ctx.fillRect(x, y+5*p, 4*p, 5*p);
+    // Pés
+    ctx.fillStyle = '#333';
+    if (Math.floor(Date.now()/200)%2===0) {
+        ctx.fillRect(x+1*p, y+10*p, 1*p, 2*p);
+    } else {
+        ctx.fillRect(x+3*p, y+10*p, 1*p, 2*p);
+    }
+    // Espada
+    if (withSword) {
+        ctx.fillStyle = '#c0c0c0';
+        ctx.fillRect(x+4*p, y+6*p, 1*p, 5*p);
+        ctx.fillRect(x+5*p, y+6*p, 1*p, 4*p);
+        ctx.fillStyle = '#a9744f';
+        ctx.fillRect(x+4*p, y+9*p, 3*p, 1*p);
+    }
+}
+function loopGame1() {
+    if (currentSlide !== 2) return;
+    ctx1.fillStyle = '#6ea9ff';
+    ctx1.fillRect(0,0,canvas1.width,canvas1.height);
+    ctx1.fillStyle = '#fff';
+    ctx1.fillRect(30,20,50,20);
+    ctx1.fillRect(220,30,50,15);
+    ctx1.fillStyle = '#53a653';
+    ctx1.fillRect(0,180,canvas1.width,30);
+    ctx1.fillStyle = '#3a2411';
+    for(let i=0;i<canvas1.width;i+=30){
+        ctx1.fillRect(i,170,20,10);
+    }
+    ctx1.fillStyle = '#ffffff';
+    ctx1.font = '14px "Press Start 2P"';
+    ctx1.fillText('LVL 16', 20, 80);
+    ctx1.fillStyle = '#ffd000';
+    ctx1.fillText('LVL 17', 200, 80);
+    ctx1.strokeStyle = '#fff';
+    ctx1.strokeRect(200, 60, 110, 110);
+
+    if (keys.ArrowRight) soraya1.x = Math.min(soraya1.x + 2.2, 280);
+    if (keys.ArrowLeft) soraya1.x = Math.max(soraya1.x - 2.2, 5);
+    if (keys.ArrowUp && soraya1.grounded) {
+        soraya1.vy = -6;
+        soraya1.grounded = false;
+        playSound('jump');
+    }
+    soraya1.vy += 0.3;
+    soraya1.y += soraya1.vy;
+    if (soraya1.y > 140) {
+        soraya1.y = 140;
+        soraya1.vy = 0;
+        soraya1.grounded = true;
+    }
+    drawSoraya(ctx1, soraya1.x, soraya1.y, false);
+
+    if (soraya1.x > 210 && !game1Solved) {
+        game1Solved = true;
+        playSound('upgrade');
+        document.getElementById('msg-lvlup').style.display = 'block';
+        document.getElementById('upgrade-burst').style.display = 'block';
+        markSlideComplete(2);
+    }
+    requestAnimationFrame(loopGame1);
+}
+
+/* ====== GAME 2: VILLAIN & HOUSE ====== */
+const canvas2 = document.getElementById('canvas-game-2');
+const ctx2 = canvas2.getContext('2d');
+let soraya2 = { x: 20, y: 140, vy: 0, grounded: true };
+let villain = { x: 150, defeated: false };
+let game2Solved = false;
+
+function resetGame2() {
+    soraya2 = { x: 20, y: 140, vy: 0, grounded: true };
+    villain = { x: 150, defeated: false };
+    game2Solved = false;
+    document.getElementById('villain-msg').style.display = 'block';
+}
+function triggerAttack() {
+    if (currentSlide !== 3) return;
+    if (!villain.defeated && Math.abs(soraya2.x - villain.x) < 30) {
+        villain.defeated = true;
+        document.getElementById('villain-msg').style.display = 'none';
+        playSound('hit');
+    }
+}
+function loopGame2() {
+    if (currentSlide !== 3) return;
+    ctx2.fillStyle = '#031229';
+    ctx2.fillRect(0,0,canvas2.width,canvas2.height);
+    ctx2.fillStyle = '#fff';
+    ctx2.fillRect(40,50,40,18);
+    ctx2.fillRect(220,30,50,15);
+    ctx2.fillRect(260,70,30,12);
+    ctx2.fillRect(150,10,15,15);
+    ctx2.fillRect(280,15,10,10);
+    ctx2.fillStyle = '#2e7d32';
+    ctx2.fillRect(0,180,canvas2.width,40);
+
+    // House
+    ctx2.fillStyle = '#ffedcc';
+    ctx2.fillRect(10,120,60,60);
+    ctx2.fillStyle = '#b51818';
+    ctx2.beginPath();
+    ctx2.moveTo(5,120);
+    ctx2.lineTo(40,85);
+    ctx2.lineTo(75,120);
+    ctx2.closePath();
+    ctx2.fill();
+    ctx2.fillStyle = '#000';
+    ctx2.font = '10px "Press Start 2P"';
+    ctx2.fillText('Haus', 12, 112);
+    ctx2.fillText('Soraya', 12, 124);
+
+    // Gift zone
+    ctx2.fillStyle = '#ff69b4';
+    ctx2.fillRect(260,150,30,30);
+    ctx2.fillStyle = '#fff';
+    ctx2.fillRect(273,150,4,30);
+    ctx2.fillRect(260,162,30,4);
+    ctx2.fillStyle = '#fff';
+    ctx2.fillText('Geschenk', 220, 145);
+
+    // Villain
+    if (!villain.defeated) {
+        ctx2.fillStyle = '#5500aa';
+        ctx2.fillRect(villain.x, 130, 30, 40);
+        ctx2.fillStyle = '#fff';
+        ctx2.fillRect(villain.x+5, 140, 6, 6);
+        ctx2.fillRect(villain.x+18, 140, 6, 6);
+        ctx2.fillStyle = '#ffcc00';
+        ctx2.fillRect(villain.x+10, 155, 10, 5);
+        ctx2.fillStyle = '#000';
+        ctx2.fillText('Boss', villain.x-5, 125);
+    } else {
+        ctx2.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx2.font = '9px "Press Start 2P"';
+        ctx2.fillText('KO!', villain.x, 140);
+    }
+
+    if (keys.ArrowRight) soraya2.x = Math.min(soraya2.x + 2.3, 290);
+    if (keys.ArrowLeft) soraya2.x = Math.max(soraya2.x - 2.3, 5);
+    if (keys.ArrowUp && soraya2.grounded) {
+        soraya2.vy = -6.5;
+        soraya2.grounded = false;
+        playSound('jump');
+    }
+    soraya2.vy += 0.35;
+    soraya2.y += soraya2.vy;
+    if (soraya2.y > 140) {
+        soraya2.y = 140;
+        soraya2.vy = 0;
+        soraya2.grounded = true;
+    }
+    drawSoraya(ctx2, soraya2.x, soraya2.y, true);
+
+    if (soraya2.x > villain.x - 15 && !villain.defeated) {
+        document.getElementById('villain-msg').style.display = 'block';
+    }
+    if (villain.defeated && soraya2.x > 250 && !game2Solved) {
+        game2Solved = true;
+        playSound('win');
+        markSlideComplete(3);
+    }
+    requestAnimationFrame(loopGame2);
+}
+
+/* ====== GIFT STAGE ====== */
+const giftContainer = document.getElementById('gift-container');
+const clickCounter = document.getElementById('click-counter');
+let giftClicks = 0;
+const requiredClicks = 8;
+function resetGift() {
+    giftClicks = 0;
+    giftContainer.textContent = '🎁';
+    giftContainer.classList.remove('shaking');
+    giftContainer.style.transform = 'scale(1)';
+    clickCounter.innerHTML = `
+        <span class="lang-de">Tippe mehrmals, bis es aufspringt.</span>
+        <span class="lang-pt">Clique várias vezes até abrir.</span>
+    `;
+    slideProgress[4] = false;
+    updateNavButtons();
+}
+giftContainer.addEventListener('click', () => {
+    if (currentSlide !== 4) return;
+    giftClicks++;
+    giftContainer.classList.add('shaking');
+    setTimeout(() => giftContainer.classList.remove('shaking'), 300);
+    clickCounter.innerHTML = `
+        <span class="lang-de">${Math.max(requiredClicks - giftClicks,0)} Klopf-Angriffe übrig.</span>
+        <span class="lang-pt">${Math.max(requiredClicks - giftClicks,0)} toques restantes.</span>
+    `;
+    playSound('hit');
+    if (giftClicks >= requiredClicks) {
+        giftContainer.textContent = '🎉';
+        giftContainer.style.transform = 'scale(1.4)';
+        clickCounter.innerHTML = `
+            <span class="lang-de">Geöffnet! Die ►-Taste wartet.</span>
+            <span class="lang-pt">Aberto! A seta ► espera.</span>
+        `;
+        markSlideComplete(4);
+        releaseConfetti(document.getElementById('slide-4'));
+    }
+});
+function releaseConfetti(container) {
+    for (let i = 0; i < 25; i++) {
+        const conf = document.createElement('div');
+        conf.style.position = 'absolute';
+        conf.style.top = '-10px';
+        conf.style.left = Math.random()*100 + '%';
+        conf.style.width = '6px';
+        conf.style.height = '10px';
+        conf.style.background = `hsl(${Math.random()*360},80%,60%)`;
+        conf.style.animation = `fall-${i} 2s linear forwards`;
+        const keyframes = document.createElement('style');
+        keyframes.innerHTML = `
+            @keyframes fall-${i} {
+                0% { transform: translateY(0) rotate(0); opacity:1; }
+                100% { transform: translateY(300px) rotate(360deg); opacity:0; }
+            }
+        `;
+        document.head.appendChild(keyframes);
+        container.appendChild(conf);
+        setTimeout(() => conf.remove(), 2000);
+    }
+}
+
+/* ====== CELEBRATION ====== */
+const balloonSky = document.getElementById('balloon-sky');
+function startCelebration() {
+    balloonSky.innerHTML = '';
+    for (let i = 0; i < 30; i++) {
+        const balloon = document.createElement('div');
+        balloon.className = 'balloon';
+        balloon.style.left = (Math.random()*100) + '%';
+        balloon.style.animationDelay = (Math.random()*4) + 's';
+        balloon.style.background = `hsl(${Math.random()*360},70%,60%)`;
+        balloonSky.appendChild(balloon);
+    }
+    spawnFireworks();
+    playSound('win');
+}
+function spawnFireworks() {
+    for (let i = 0; i < 6; i++) {
+        const fw = document.createElement('div');
+        fw.className = 'firework';
+        fw.style.left = (10 + i*15) + '%';
+        fw.style.top = (20 + Math.random()*20) + '%';
+        fw.style.animationDelay = (Math.random()*2) + 's';
+        document.getElementById('slide-5').appendChild(fw);
+    }
+}
+
+/* ====== INITIAL DISPLAY ====== */
+updateNavButtons();
+</script>
+</body>
+</html>
